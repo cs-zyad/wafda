@@ -39,3 +39,19 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# ===== وفدة =====
+# ملف حساب خدمة Firebase سرّي — لا يُرفع أبدًا
+*serviceAccount*.json
+*service-account*.json
+*-firebase-adminsdk-*.json
+firebase-adminsdk*.json
+credentials*.json
+.env*
+!.env.example
+.emulator-data/
+*-debug.log
+.next-e2e/
+test-results/
+playwright-report/
+e2e/.artifacts/
