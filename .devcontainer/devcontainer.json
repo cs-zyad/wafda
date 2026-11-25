@@ -1,0 +1,9 @@
+{
+  "name": "وفدة | WAFDA",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:24",
+  "features": { "ghcr.io/devcontainers/features/java:1": { "version": "21" } },
+  "forwardPorts": [3000],
+  "portsAttributes": { "3000": { "label": "وفدة", "onAutoForward": "openPreview" } },
+  "postCreateCommand": "npm ci",
+  "postStartCommand": "bash .devcontainer/start.sh"
+}
