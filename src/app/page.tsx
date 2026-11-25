@@ -1,69 +1,45 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { PublicBar } from "@/ui/Shell";
+import { me, homeOf, demo } from "@/server/session";
+import { brand } from "@/config/brand";
 
-export default function Home() {
+export default async function Home() {
+  const u = await me();
+  if (u) redirect(homeOf(u));
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>
-            To get started, edit the{" "}
-            <code className={styles.code}>page.tsx</code> file.
-          </h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <>
+      <PublicBar />
+      <section className="hero">
+        <div className="wrap">
+          <span className="tag plum">{brand.fullName}</span>
+          <h1 style={{ marginTop: 14 }}>{brand.tagline}</h1>
+          <p>جهّز الدعوة وأرسلها بواتساب أو البريد، واستلم تأكيدات الحضور مع تذكرة QR مستقلة لكل ضيف ومرافقه، ثم سجّل الدخول عند الباب بمسح سريع من الجوال.</p>
+          <div className="row" style={{ marginTop: 20 }}>
+            <Link className="btn go lg" href="/register">أنشئ فعاليتك</Link>
+            <Link className="btn lg ghost" href="/login" style={{ color: "var(--ivory)", borderColor: "rgb(255 255 255 / 30%)" }}>تسجيل الدخول</Link>
+          </div>
         </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </section>
+      <main className="wrap page stack-lg">
+        <div className="grid g3">
+          {[
+            ["جهّز", "البيانات مرة واحدة تظهر كما هي في صفحة الدعوة ورسائل واتساب والبريد."],
+            ["أرسل وتابع", "من دُعي، ومن أكّد، ومن اعتذر، ومن تعذّر الإرسال إليه، مع تذكير لمن لم يرد."],
+            ["استقبل", "مسح QR من الجوال: دخل، أو حضر مسبقًا، أو تذكرة لا تخص الفعالية."],
+          ].map(([t, d]) => (
+            <div className="card" key={t}>
+              <h3>{t}</h3>
+              <p className="muted" style={{ margin: 0 }}>{d}</p>
+            </div>
+          ))}
         </div>
+        {demo() ? (
+          <div className="card soft small">
+            <b>حسابات التجربة</b> — كلمة المرور <bdi className="ltr">Wafda@2026</bdi>: <bdi className="ltr">organizer@wafda.test</bdi>، <bdi className="ltr">staff@wafda.test</bdi>، <bdi className="ltr">admin@wafda.test</bdi>
+          </div>
+        ) : null}
       </main>
-    </div>
+    </>
   );
 }

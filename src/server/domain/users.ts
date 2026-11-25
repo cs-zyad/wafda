@@ -127,7 +127,7 @@ export async function inspectSetupLink(t: string) {
   const user = await getUser(d.userId);
   return user ? { ok: true as const, user } : { ok: false as const, reason: "الحساب غير موجود" };
 }
-export async function useSetupLink(t: string, password: string) {
+export async function redeemSetupLink(t: string, password: string) {
   const p = passwordProblem(password);
   if (p) throw new AppError("validation", p);
   const hash = await hashPassword(password);

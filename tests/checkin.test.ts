@@ -3,7 +3,7 @@ import { confirmInvitation, declineInvitation, registerPublic } from "@/server/d
 import { scan, manualIn, findAttendee } from "@/server/domain/checkin";
 import { addStaff } from "@/server/domain/staff";
 import { getEvent } from "@/server/domain/events";
-import { userByEmail, useSetupLink } from "@/server/domain/users";
+import { userByEmail, redeemSetupLink } from "@/server/domain/users";
 import { where } from "@/server/db";
 import type { Message } from "@/server/types";
 import { reset, user, event, guests, invs, uid, key } from "./helpers";
@@ -49,8 +49,8 @@ describe("التحضير", () => {
     const m = (await where<Message>("messages", "to", email))[0];
     expect(m.chargedTo).toBe("platform");
     const t = /set-password\/([\w-]+)/.exec(m.body)![1];
-    await useSetupLink(t, "Wafda@2026");
-    await expect(useSetupLink(t, "Wafda@2026")).rejects.toMatchObject({ code: "used_link" });
+    await redeemSetupLink(t, "Wafda@2026");
+    await expect(redeemSetupLink(t, "Wafda@2026")).rejects.toMatchObject({ code: "used_link" });
     const st = (await userByEmail(email))!;
     expect(await scan(st, e.id, g)).toMatchObject({ result: "ok" });
     const other = await event(o, { invites: guests(1) });
