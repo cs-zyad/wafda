@@ -16,6 +16,7 @@ export default async function Register() {
       <ActionForm action={registerAction} className="stack">
         <label className="field"><span>الاسم أو اسم الجهة</span><input name="name" required maxLength={120} autoComplete="organization" /></label>
         <label className="field"><span>البريد الإلكتروني</span><input type="email" name="email" required autoComplete="email" /></label>
+        <label className="field"><span>رقم الجوال (واتساب)</span><input type="tel" name="phone" required inputMode="tel" placeholder="05xxxxxxxx" autoComplete="tel" /><small>نتواصل معك عليه بخصوص الدفع والطلبات</small></label>
         <label className="field"><span>كلمة المرور</span><input type="password" name="password" required minLength={8} autoComplete="new-password" /><small>8 أحرف على الأقل</small></label>
         <Submit className="btn go full">إنشاء الحساب</Submit>
       </ActionForm>

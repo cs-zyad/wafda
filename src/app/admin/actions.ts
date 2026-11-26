@@ -12,6 +12,7 @@ import { ref } from "@/server/db";
 import { audit, getSettings, saveSettings } from "@/server/domain/settings";
 import { quoteDesign, rejectDesign, startDesign, deliverDesign, designMessage } from "@/server/domain/designs";
 import { reply, type SupportStatus } from "@/server/domain/support";
+import { confirmManualPayment, rejectManualPayment } from "@/server/domain/payments";
 
 const s = (fd: FormData, k: string) => String(fd.get(k) ?? "");
 const tpl = (fd: FormData): TemplateInput => ({ layout: s(fd, "layout"), name: s(fd, "name"), category: s(fd, "category"), colors: [0, 1, 2, 3, 4].map((i) => s(fd, `c${i}`)), visible: fd.get("visible") === "on", order: Number(s(fd, "order") || 99) });
@@ -90,4 +91,20 @@ export const settingsAction = async (_: Res | null, fd: FormData) =>
     });
     revalidatePath("/admin/settings");
     return { ok: true, msg: "حُفظت الإعدادات وسُجّلت في سجل التدقيق" };
+  });
+
+export const confirmPaymentAction = async (payId: string) =>
+  act(async () => {
+    const out = await confirmManualPayment((await needAdmin()).id, payId);
+    revalidatePath("/admin/payments");
+    revalidatePath("/admin");
+    if (out === "rejected") throw new AppError("rejected", "تعذّر التأكيد: بيانات العملية لا تطابق");
+    return { ok: true, msg: out === "applied" ? "تم تأكيد الاستلام وتفعّل طلب المنظّم" : "الطلب مؤكد مسبقًا" };
+  });
+export const rejectPaymentAction = async (payId: string) =>
+  act(async () => {
+    await rejectManualPayment((await needAdmin()).id, payId);
+    revalidatePath("/admin/payments");
+    revalidatePath("/admin");
+    return { ok: true, msg: "أُلغي الطلب" };
   });

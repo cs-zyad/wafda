@@ -1,11 +1,12 @@
 import type { Transaction } from "firebase-admin/firestore";
 import { ref, newRef } from "../db";
 import type { Settings } from "../types";
+import { isDemo } from "../env";
 
-/** قيم تجريبية مقترحة، مُعلّمة demo=true، وقابلة للتعديل من لوحة الأدمن. */
+/** أسعار مقترحة قابلة للتعديل من لوحة الأدمن؛ تُعلَّم «تجريبية» في الوضع التجريبي فقط. */
 export const DEFAULTS: Settings = {
   prices: {
-    demo: true,
+    demo: isDemo(),
     packages: [
       { places: 50, price: 9900 },
       { places: 100, price: 17900 },

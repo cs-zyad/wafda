@@ -23,7 +23,8 @@ export async function loginAction(_: Res | null, fd: FormData): Promise<Res> {
 export async function registerAction(_: Res | null, fd: FormData): Promise<Res> {
   const r = await act(async () => {
     if (!(await allow(`register:${await ip()}`, 10, 3600_000))) throw new AppError("rate", "محاولات كثيرة؛ حاول لاحقًا");
-    const u = await createUser({ email: s(fd, "email"), name: s(fd, "name"), role: "organizer", password: s(fd, "password") });
+    if (!s(fd, "phone").trim()) throw new AppError("validation", "رقم الجوال مطلوب");
+    const u = await createUser({ email: s(fd, "email"), name: s(fd, "name"), role: "organizer", password: s(fd, "password"), phone: s(fd, "phone") });
     await setSession(await openSession(u.id));
   });
   if (r.ok) redirect("/dashboard");

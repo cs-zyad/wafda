@@ -1,3 +1,4 @@
+import { channelReady } from "../providers/messaging";
 import { db, ref, tx, newRef, getDoc, where } from "../db";
 import { token } from "../crypto";
 import { AppError, notFound } from "../errors";
@@ -82,5 +83,6 @@ export function channelsFor(inv: Pick<Invitation, "phone" | "email" | "channel">
   if (mode !== "email" && inv.phone) out.push("whatsapp");
   if (mode !== "whatsapp" && inv.email) out.push("email");
   if (!out.length) out.push(inv.phone ? "whatsapp" : "email");
-  return out.filter((c) => (c === "whatsapp" ? inv.phone : inv.email));
+  // قناة غير مفعّلة (مثل واتساب قبل ربط مزوّده) لا يُرسل عليها ولا تُحسب تكلفتها
+  return out.filter((c) => (c === "whatsapp" ? inv.phone : inv.email) && channelReady(c));
 }

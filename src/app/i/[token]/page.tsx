@@ -10,6 +10,7 @@ import type { Registration } from "@/server/types";
 import { InvitationCard } from "@/ui/InvitationCard";
 import { GuestPage, State, TicketLinks } from "@/ui/Guest";
 import { RsvpForm, Decline } from "@/ui/GuestForms";
+import { channelReady } from "@/server/providers/messaging";
 import { rsvpAction, declineAction } from "@/app/guest-actions";
 import { fmtDateTime } from "@/shared/time";
 import { localPhone } from "@/shared/text";
@@ -58,7 +59,7 @@ export default async function InvitationPage({ params }: { params: Promise<{ tok
         <State tone="warn" icon="★" title="توفر مقعد!">
           <p style={{ margin: 0 }}>الفرصة صالحة حتى {fmtDateTime(reg.offerUntil!)}. يُحجز المقعد عند تأكيدك إن كان لا يزال متاحًا.</p>
         </State>
-        <RsvpForm action={rsvp} d={d} companion={inv.companion && reg.wantSeats > 1} />
+        <RsvpForm action={rsvp} d={d} companion={inv.companion && reg.wantSeats > 1} wa={channelReady("whatsapp")} />
         <Decline action={decline} />
       </>
     );
@@ -67,7 +68,7 @@ export default async function InvitationPage({ params }: { params: Promise<{ tok
       <>
         {reg?.status === "declined" ? <div className="alert info">سجّلت اعتذارك سابقًا؛ يمكنك التأكيد الآن إن توفر مقعد.</div> : null}
         {inv.companion ? <p className="small muted" style={{ margin: 0 }}>دعوتك تسمح بمرافق واحد.</p> : null}
-        <RsvpForm action={rsvp} d={d} companion={inv.companion} />
+        <RsvpForm action={rsvp} d={d} companion={inv.companion} wa={channelReady("whatsapp")} />
         {!reg ? <Decline action={decline} /> : null}
       </>
     );

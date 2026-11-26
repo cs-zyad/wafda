@@ -1,4 +1,5 @@
-// قبل next build: يتأكد من ضبط Firebase برسالة عربية واضحة، ويعبّئ البيانات التجريبية مرة واحدة إن كان DEMO_MODE=true.
+// قبل next build: يتأكد من ضبط Firebase برسالة عربية واضحة، ويعبّئ البيانات التجريبية مرة واحدة إن كان DEMO_MODE=true،
+// أو يهيّئ الإنتاج (scripts/bootstrap.ts) في الوضع الفعلي.
 import { spawnSync } from "node:child_process";
 const stop = (m) => { console.error(`\n✖ ${m}\n`); process.exit(1); };
 
@@ -19,4 +20,8 @@ if (process.env.DEMO_MODE === "true") {
   console.log("… DEMO_MODE=true: البيانات التجريبية (مرة واحدة فقط)");
   const r = spawnSync("npx", ["tsx", "--tsconfig", "tsconfig.json", "scripts/seed.ts"], { stdio: "inherit", env: process.env });
   if (r.status !== 0) stop("فشلت تعبئة البيانات التجريبية؛ راجع السجل أعلاه.");
+} else if (process.env.VERCEL || process.env.WAFDA_BOOTSTRAP === "true") {
+  console.log("… الوضع الفعلي: تهيئة الإنتاج (حذف التجريبي مرة واحدة، القوالب، حساب الأدمن)");
+  const r = spawnSync("npx", ["tsx", "--tsconfig", "tsconfig.json", "scripts/bootstrap.ts"], { stdio: "inherit", env: process.env });
+  if (r.status !== 0) stop("فشلت تهيئة الإنتاج؛ راجع السجل أعلاه.");
 }

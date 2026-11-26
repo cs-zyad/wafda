@@ -1,19 +1,20 @@
 import Link from "next/link";
 import { overview } from "@/server/domain/adminStats";
-import { firebaseStatus } from "@/server/db";
+import { db, col, firebaseStatus } from "@/server/db";
 import { messagingStatus } from "@/server/providers/messaging";
 import { paymentProvider } from "@/server/providers/payments";
-import { Stat, Tag, Title } from "@/ui/kit";
+import { Alert, Stat, Tag, Title } from "@/ui/kit";
 import { sar } from "@/shared/money";
 
 export const metadata = { title: "لوحة الأدمن" };
 export default async function Admin() {
-  const o = await overview();
+  const [o, pendingPays] = await Promise.all([overview(), db().collection(col.payments).where("status", "==", "pending").count().get().then((r) => r.data().count)]);
   const fb = firebaseStatus();
   const pay = paymentProvider();
   return (
     <div className="stack-lg">
       <Title sub="عمليات المنصة في مكان واحد.">لوحة الأدمن</Title>
+      {pendingPays ? <Alert tone="warn"><b className="num">{pendingPays}</b> طلب دفع بانتظار التأكيد — <Link href="/admin/payments">افتح المدفوعات</Link></Alert> : null}
       <div className="grid g4">
         <Stat k="المنظّمون" v={o.organizers} s={`${o.suspended} حساب موقوف`} />
         <Stat k="الفعاليات" v={o.events} s={`${o.active} نشطة · ${o.drafts} مسودة`} />
@@ -30,8 +31,8 @@ export default async function Admin() {
           <thead><tr><th>الخدمة</th><th>المزوّد</th><th>الحالة</th></tr></thead>
           <tbody>
             <tr><td>قاعدة البيانات</td><td>Firebase Firestore</td><td>{fb.ok ? <Tag tone="ok">{fb.mode === "emulator" ? "محاكي محلي" : "فعلي"}</Tag> : <Tag tone="bad">غير مضبوط</Tag>}</td></tr>
-            {messagingStatus().map((p) => <tr key={p.channel}><td>{p.channel === "whatsapp" ? "واتساب" : "البريد"}</td><td>{p.label}</td><td>{p.mode === "mock" ? <Tag tone="warn">تجريبي</Tag> : <Tag tone="ok">فعلي</Tag>}</td></tr>)}
-            <tr><td>الدفع</td><td>{pay.label}</td><td>{pay.mode === "mock" ? <Tag tone="warn">تجريبي</Tag> : <Tag tone="ok">فعلي</Tag>}</td></tr>
+            {messagingStatus().map((p) => <tr key={p.channel}><td>{p.channel === "whatsapp" ? "واتساب" : "البريد"}</td><td>{p.label}</td><td>{p.mode === "mock" ? <Tag tone="warn">تجريبي</Tag> : p.mode === "off" ? <Tag tone="bad">غير مفعّل</Tag> : <Tag tone="ok">فعلي</Tag>}</td></tr>)}
+            <tr><td>الدفع</td><td>{pay.label}</td><td>{pay.mode === "mock" ? <Tag tone="warn">تجريبي</Tag> : pay.mode === "manual" ? <Tag tone="info">يدوي</Tag> : <Tag tone="ok">فعلي</Tag>}</td></tr>
           </tbody>
         </table></div>
       </section>

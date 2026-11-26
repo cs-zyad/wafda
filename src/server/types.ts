@@ -8,6 +8,8 @@ export interface User {
   role: Role;
   status: "active" | "invited" | "suspended";
   passwordHash?: string;
+  /** جوال/واتساب للتواصل (المنظّم) */
+  phone?: string;
   credit: number; // رصيد الرسائل (هللة)
   createdAt: number;
 }

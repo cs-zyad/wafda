@@ -6,6 +6,7 @@ import { invitationsOf } from "@/server/domain/events";
 import { getSettings } from "@/server/domain/settings";
 import { getUser } from "@/server/domain/users";
 import { AppError } from "@/server/errors";
+import { channelReady } from "@/server/providers/messaging";
 import type { ChannelMode } from "@/server/types";
 import { ActionForm, Do, Submit } from "@/ui/client";
 import { Key } from "@/ui/Key";
@@ -14,14 +15,18 @@ import { fmtShort, msToRiyadhLocal, nowMs } from "@/shared/time";
 import { sar } from "@/shared/money";
 import { sendAction, scheduleAction, cancelReminderAction } from "../../../actions";
 
-const MODES: [ChannelMode, string][] = [["both", "واتساب + البريد"], ["whatsapp", "واتساب"], ["email", "البريد"]];
+const ALL_MODES: [ChannelMode, string][] = [["both", "واتساب + البريد"], ["whatsapp", "واتساب"], ["email", "البريد"]];
+/** القنوات المفعّلة فقط (واتساب يظهر بعد ربط مزوّده) */
+const modes = () => ALL_MODES.filter(([m]) => (m === "both" ? channelReady("whatsapp") && channelReady("email") : channelReady(m)));
 const safe = async (f: () => ReturnType<typeof estimate>) => { try { return { ok: true as const, v: await f() }; } catch (e) { return { ok: false as const, err: e instanceof AppError ? e.message : "تعذّر الحساب" }; } };
 
 function Modes() {
+  const ms = modes();
+  if (ms.length === 1) return <input type="hidden" name="mode" value={ms[0][0]} />;
   return (
     <fieldset>
       <legend className="label">القناة للقائمة كاملة</legend>
-      <div className="choices">{MODES.map(([m, l]) => <label className="choice" key={m}><input type="radio" name="mode" value={m} defaultChecked={m === "both"} /><span>{l}</span></label>)}</div>
+      <div className="choices">{ms.map(([m, l], i) => <label className="choice" key={m}><input type="radio" name="mode" value={m} defaultChecked={i === 0} /><span>{l}</span></label>)}</div>
       <small className="hint">تُعدّل تلقائيًا حسب وسائل التواصل المتاحة لكل مدعو، ويمكن تعديل القناة لكل مدعو من قائمة المدعوين.</small>
     </fieldset>
   );
@@ -44,9 +49,12 @@ export default async function Send({ params }: { params: Promise<{ id: string }>
   const failedIds = invs.filter((i) => i.sendStatus === "failed").map((i) => i.id);
   const pending = invs.filter((i) => i.sendStatus === "not_sent").length;
   const remind = invs.filter(needsReminder).length;
+  const MODES = modes();
   const est = (k: "invitation" | "reminder", ids?: string[]) => Promise.all(MODES.map(async ([m, label]) => ({ label, r: await safe(() => estimate(user.id, e.id, k, m, ids)) })));
   const [first, again, rem] = await Promise.all([est("invitation"), failedIds.length ? est("invitation", failedIds) : Promise.resolve([]), est("reminder")]);
-  const blocked = first[0].r.ok ? null : first[0].r.err;
+  const blocked = !MODES.length ? "لا توجد قناة إرسال مفعّلة بعد (البريد يحتاج ضبط SMTP)." : first[0].r.ok ? null : first[0].r.err;
+  const waOff = !channelReady("whatsapp");
+  const unreachable = waOff ? invs.filter((i) => !i.email).length : 0;
   return (
     <div className="stack-lg">
       <div className="grid g4">
@@ -56,6 +64,7 @@ export default async function Send({ params }: { params: Promise<{ id: string }>
         <Stat k="بحاجة لتذكير" v={remind} s="وصلتهم الدعوة ولم يردوا" />
       </div>
       <Alert>رسوم الدعوات والتذكيرات من رصيد الرسائل حسب القناة. رسالة تأكيد الحضور مع التذكرة <b>مشمولة في الباقة</b>. عند عدم كفاية الرصيد: {s.policy.lowCredit === "block" ? "يُمنع الإرسال كاملًا (لا يُرسل ولا يُخصم شيء)" : "يُرسل ما يغطيه الرصيد بترتيب القائمة"}.</Alert>
+      {waOff ? <Alert tone="warn">الإرسال حاليًا بالبريد الإلكتروني فقط؛ واتساب يتفعّل قريبًا.{unreachable ? <> <b className="num">{unreachable}</b> مدعو بلا بريد لن تصلهم رسالة — أضف بريدهم من <Link href={`/dashboard/events/${e.id}/guests`}>قائمة المدعوين</Link> أو شارك رابط دعوتهم يدويًا.</> : null}</Alert> : null}
       {blocked ? <Alert tone="warn">{blocked} <Link href={`/dashboard/events/${e.id}/payment`}>الباقة والدفع</Link></Alert> : null}
       <section className="card stack">
         <h2>الدعوة الأولى</h2>
@@ -100,7 +109,7 @@ export default async function Send({ params }: { params: Promise<{ id: string }>
             <tbody>{rems.map((r) => (
               <tr key={r.id}>
                 <td className="nowrap">{fmtShort(r.runAt)}</td>
-                <td>{MODES.find(([m]) => m === r.mode)?.[1]}</td>
+                <td>{ALL_MODES.find(([m]) => m === r.mode)?.[1]}</td>
                 <td><Tag tone={r.status === "done" ? "ok" : r.status === "failed" ? "bad" : r.status === "cancelled" ? "neutral" : "info"}>{{ scheduled: "مجدول", running: "قيد التنفيذ", done: "نُفّذ", failed: "فشل", cancelled: "ملغى" }[r.status]}</Tag></td>
                 <td className="small">{r.result ?? "—"}</td>
                 <td>{r.status === "scheduled" ? <Do action={cancelReminderAction.bind(null, e.id, r.id)}>إلغاء</Do> : null}</td>

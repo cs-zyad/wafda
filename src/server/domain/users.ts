@@ -3,7 +3,7 @@ import { promisify } from "node:util";
 import { db, ref, newRef, tx, getDoc, where } from "../db";
 import { token, sha256 } from "../crypto";
 import { AppError, notFound } from "../errors";
-import { normalizeEmail, clamp } from "@/shared/text";
+import { normalizeEmail, normalizePhone, clamp } from "@/shared/text";
 import { DAY } from "@/shared/time";
 import type { Role, User } from "../types";
 import { audit } from "./settings";
@@ -37,7 +37,7 @@ export async function userByEmail(raw: string) {
   return u ? getUser(u.ref) : null;
 }
 
-export async function createUser(i: { email: string; name: string; role: Role; password?: string }) {
+export async function createUser(i: { email: string; name: string; role: Role; password?: string; phone?: string }) {
   const email = normalizeEmail(i.email);
   if (!email) throw new AppError("validation", "البريد الإلكتروني غير صالح");
   const name = clamp(i.name, 120);
@@ -46,9 +46,11 @@ export async function createUser(i: { email: string; name: string; role: Role; p
     const p = passwordProblem(i.password);
     if (p) throw new AppError("validation", p);
   }
+  const phone = i.phone ? normalizePhone(i.phone) : null;
+  if (i.phone && !phone) throw new AppError("validation", "رقم الجوال غير صالح");
   const passwordHash = i.password ? await hashPassword(i.password) : undefined;
   const r = newRef("users");
-  const u: User = { id: r.id, email, name, role: i.role, status: passwordHash ? "active" : "invited", passwordHash, credit: 0, createdAt: Date.now() };
+  const u: User = { id: r.id, email, name, role: i.role, status: passwordHash ? "active" : "invited", passwordHash, ...(phone ? { phone } : {}), credit: 0, createdAt: Date.now() };
   await tx(async (t) => {
     const uq = ref("uniques", `email:${email}`);
     if ((await t.get(uq)).exists) throw new AppError("email_taken", "هذا البريد مسجّل مسبقًا");

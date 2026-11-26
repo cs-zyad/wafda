@@ -1,3 +1,4 @@
+import { channelReady } from "@/server/providers/messaging";
 import Link from "next/link";
 import { owned } from "@/server/owned";
 import { eventData } from "@/server/domain/stats";
@@ -134,7 +135,7 @@ export default async function Guests({ params, searchParams }: { params: Promise
                             <label className="field"><span>البريد</span><input type="email" name="email" defaultValue={i.email ?? ""} /></label>
                           </div>
                           <label className="field"><span>قناة الإرسال لهذا المدعو</span>
-                            <select name="channel" defaultValue={i.channel ?? ""}><option value="">حسب اختيار القائمة</option><option value="whatsapp">واتساب</option><option value="email">البريد</option><option value="both">الاثنان</option></select>
+                            <select name="channel" defaultValue={i.channel ?? ""}><option value="">حسب اختيار القائمة</option>{channelReady("whatsapp") ? <><option value="whatsapp">واتساب</option><option value="email">البريد</option><option value="both">الاثنان</option></> : <option value="email">البريد</option>}</select>
                           </label>
                           <label className="check"><input type="checkbox" name="companion" defaultChecked={i.companion} /><span>يسمح بمرافق</span></label>
                           <Submit className="btn sm go">حفظ</Submit>

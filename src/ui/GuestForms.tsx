@@ -59,14 +59,14 @@ function Outcome({ r }: { r: Result }) {
 
 const hidesSubmit = (r?: Result | null) => !!r && (r.status === "one_left" || (r.status === "full" && r.canWaitlist));
 
-export function RsvpForm({ action, d, companion, label = "أكّد حضورك", formKey, waitOnly }: { action: Rsvp; d: { name: string; phone: string; email: string }; companion: boolean; label?: string; formKey?: string; waitOnly?: boolean }) {
+export function RsvpForm({ action, d, companion, label = "أكّد حضورك", formKey, waitOnly, wa = true }: { action: Rsvp; d: { name: string; phone: string; email: string }; companion: boolean; label?: string; formKey?: string; waitOnly?: boolean; wa?: boolean }) {
   const toast = useToast();
   const [st, run] = useActionState(async (p: Res<Result> | null, fd: FormData) => {
     const r = await action(p, fd);
     if (!r.ok) toast(false, r.msg);
     return r;
   }, null);
-  const [type, setType] = useState<"phone" | "email">(d.phone || !d.email ? "phone" : "email");
+  const [type, setType] = useState<"phone" | "email">(wa && (d.phone || !d.email) ? "phone" : "email");
   const r = st?.ok ? st.data : null;
   return (
     <form action={run} className="stack">
@@ -76,17 +76,18 @@ export function RsvpForm({ action, d, companion, label = "أكّد حضورك", 
         <span>الاسم</span>
         <input name="name" required minLength={2} maxLength={120} defaultValue={d.name} autoComplete="name" />
       </label>
-      <fieldset>
+      {!wa ? <input type="hidden" name="contactType" value="email" /> : null}
+      {wa ? <fieldset>
         <legend className="label">أين نرسل لك التذكرة؟</legend>
         <div className="choices" style={{ gridTemplateColumns: "1fr 1fr" }}>
           <label className="choice"><input type="radio" name="contactType" value="phone" checked={type === "phone"} onChange={() => setType("phone")} /><span>واتساب</span></label>
           <label className="choice"><input type="radio" name="contactType" value="email" checked={type === "email"} onChange={() => setType("email")} /><span>البريد</span></label>
         </div>
-      </fieldset>
+      </fieldset> : null}
       {type === "phone" ? (
         <label className="field" key="p"><span>رقم الجوال (واتساب)</span><input type="tel" name="contact" required inputMode="tel" placeholder="05xxxxxxxx" defaultValue={d.phone} autoComplete="tel" /></label>
       ) : (
-        <label className="field" key="e"><span>البريد الإلكتروني</span><input type="email" name="contact" required placeholder="name@example.com" defaultValue={d.email} autoComplete="email" /></label>
+        <label className="field" key="e"><span>{wa ? "البريد الإلكتروني" : "بريدك الإلكتروني (تصلك عليه التذكرة)"}</span><input type="email" name="contact" required placeholder="name@example.com" defaultValue={d.email} autoComplete="email" /></label>
       )}
       {companion ? (
         <label className="check">

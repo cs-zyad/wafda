@@ -12,7 +12,7 @@ import { addInvitations, editInvitation, deleteInvitation } from "@/server/domai
 import { readFile, preview, commit, type Row, type CheckedRow } from "@/server/domain/importer";
 import { send, scheduleReminder, cancelReminder } from "@/server/domain/sending";
 import { cancelByOrganizer, resendTicket, sendOffer } from "@/server/domain/rsvp";
-import { payPackage, payExtraPlaces, payTopup } from "@/server/domain/payments";
+import { payPackage, payExtraPlaces, payTopup, setPaymentContact } from "@/server/domain/payments";
 import { addStaff, removeStaff } from "@/server/domain/staff";
 import { requestDesign, acceptQuote, payForDesign, cancelDesign, designMessage } from "@/server/domain/designs";
 import { openTicket, reply } from "@/server/domain/support";
@@ -148,6 +148,13 @@ export const topupAction = async (_: Res | null, fd: FormData) =>
     const a = toHalalas(s(fd, "amount"));
     if (!a) throw new AppError("validation", "أدخل مبلغًا صحيحًا");
     return payTopup((await needOrganizer()).id, a);
+  });
+
+export const payContactAction = async (payId: string, _: Res | null, fd: FormData) =>
+  act(async () => {
+    await setPaymentContact((await needOrganizer()).id, payId, s(fd, "phone"));
+    revalidatePath(`/dashboard/pay/${payId}`);
+    return { ok: true, msg: "حُفظ الرقم؛ بنتواصل معك عليه" };
   });
 
 /* ===== فريق الاستقبال ===== */

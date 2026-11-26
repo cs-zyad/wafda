@@ -15,7 +15,7 @@ const config: NextConfig = {
   // بناء منفصل لاختبار المتصفح دون التعارض مع خادم التطوير
   distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
-  serverExternalPackages: ["firebase-admin", "exceljs"],
+  serverExternalPackages: ["firebase-admin", "exceljs", "nodemailer"],
   allowedDevOrigins: ["*.app.github.dev", "127.0.0.1", ...hosts.map((h) => h.split(":")[0])],
   experimental: { serverActions: { allowedOrigins: hosts, bodySizeLimit: "5mb" } },
   async headers() {

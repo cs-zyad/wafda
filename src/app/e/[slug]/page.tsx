@@ -8,6 +8,7 @@ import { token } from "@/server/crypto";
 import { InvitationCard } from "@/ui/InvitationCard";
 import { GuestPage, State } from "@/ui/Guest";
 import { RsvpForm } from "@/ui/GuestForms";
+import { channelReady } from "@/server/providers/messaging";
 import { publicAction } from "@/app/guest-actions";
 
 export const metadata: Metadata = { title: "التسجيل" };
@@ -34,9 +35,9 @@ export default async function PublicEvent({ params }: { params: Promise<{ slug: 
             {left <= 0 ? (
               <div className="alert warn"><b>اكتمل العدد.</b> انضم لقائمة الانتظار، ويصلك إشعار إن توفر مقعد.</div>
             ) : (
-              <p className="small muted" style={{ margin: 0 }}>سجّل لتصلك تذكرة QR على واتساب أو البريد.{left <= 10 ? <b> تبقّى {left} مقعد.</b> : null}</p>
+              <p className="small muted" style={{ margin: 0 }}>سجّل لتصلك تذكرة QR {channelReady("whatsapp") ? "على واتساب أو البريد" : "على بريدك"}.{left <= 10 ? <b> تبقّى {left} مقعد.</b> : null}</p>
             )}
-            <RsvpForm action={publicAction.bind(null, slug)} d={{ name: "", phone: "", email: "" }} companion={false} label="سجّل حضورك" formKey={token(18)} waitOnly={left <= 0} />
+            <RsvpForm action={publicAction.bind(null, slug)} d={{ name: "", phone: "", email: "" }} companion={false} label="سجّل حضورك" formKey={token(18)} waitOnly={left <= 0} wa={channelReady("whatsapp")} />
           </>
         )}
       </section>

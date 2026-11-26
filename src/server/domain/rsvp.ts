@@ -12,6 +12,7 @@ import { queueIn, flush } from "./outbox";
 import { eventVars, render } from "./texts";
 import { eventView, link } from "./view";
 import { ledgerRef, post } from "./ledger";
+import { channelReady } from "../providers/messaging";
 
 /* ========================= النتائج ========================= */
 
@@ -68,6 +69,7 @@ export function guestInput(i: { name: string; contactType: string; contact: stri
   const name = clamp(i.name, 120);
   if (name.length < 2) throw new AppError("validation", "اكتب اسمك (حرفان على الأقل)");
   if (i.contactType !== "phone" && i.contactType !== "email") throw new AppError("validation", "اختر وسيلة التواصل");
+  if (i.contactType === "phone" && !channelReady("whatsapp")) throw new AppError("validation", "التواصل عبر البريد الإلكتروني فقط حاليًا");
   const contact = i.contactType === "phone" ? normalizePhone(i.contact) : normalizeEmail(i.contact);
   if (!contact) throw new AppError("validation", i.contactType === "phone" ? "رقم الجوال غير صالح" : "البريد الإلكتروني غير صالح");
   return { name, contactType: i.contactType as "phone" | "email", contact };
@@ -100,7 +102,8 @@ function writeConfirm(t: Transaction, p: { e: EventDoc; reg: Registration; inv: 
   const comp = tickets.find((x) => x.kind === "companion");
   const msg = render("confirmation", { ...eventVars(eventView(p.e, reg.name)), guest_name: reg.name, ticket_link: link.ticket(tickets[0].token), companion_line: comp ? `تذكرة مرافقك (شاركها معه):\n${link.ticket(comp.token)}\n` : "", manage_link: manageLink(reg, p.inv) }, ch);
   const msgId = `conf_${reg.id}_${reg.seq.confirm}`;
-  queueIn(t, msgId, { ...msg, kind: "confirmation", channel: ch, to: reg.contact, chargedTo: "package", opCost: p.s.prices.confirmOpCost[ch], ownerId: p.e.ownerId, eventId: p.e.id, invitationId: p.inv?.id ?? null, registrationId: reg.id });
+  // القناة غير المفعّلة لا تُنشأ لها رسالة؛ التذكرة تظهر للضيف في الصفحة مباشرة
+  if (channelReady(ch)) queueIn(t, msgId, { ...msg, kind: "confirmation", channel: ch, to: reg.contact, chargedTo: "package", opCost: p.s.prices.confirmOpCost[ch], ownerId: p.e.ownerId, eventId: p.e.id, invitationId: p.inv?.id ?? null, registrationId: reg.id });
   return { tickets, msgId };
 }
 
@@ -114,7 +117,7 @@ function writeResend(t: Transaction, p: { e: EventDoc; reg: Registration; inv: I
       : render("status", { ...base, status_text: p.reg.status === "waitlisted" || p.reg.status === "offered" ? "في قائمة الانتظار" : "غير مؤكد" }, ch);
   const n = p.reg.seq.resend + 1;
   const id = `resend_${p.reg.id}_${n}`;
-  queueIn(t, id, { ...msg, kind: "ticket_resend", channel: ch, to: p.reg.contact, chargedTo: "package", opCost: p.s.prices.confirmOpCost[ch], ownerId: p.e.ownerId, eventId: p.e.id, invitationId: p.inv?.id ?? null, registrationId: p.reg.id });
+  if (channelReady(ch)) queueIn(t, id, { ...msg, kind: "ticket_resend", channel: ch, to: p.reg.contact, chargedTo: "package", opCost: p.s.prices.confirmOpCost[ch], ownerId: p.e.ownerId, eventId: p.e.id, invitationId: p.inv?.id ?? null, registrationId: p.reg.id });
   t.update(ref("registrations", p.reg.id), { resendAt: Date.now(), seq: { ...p.reg.seq, resend: n } });
   return id;
 }
@@ -355,6 +358,7 @@ export async function sendOffer(ownerId: string, regId: string, key: string) {
     if (closed) throw new AppError("closed", closed);
     if (available(e) < 1) throw new AppError("no_seat", "لا يوجد مقعد متاح الآن؛ انتظر اعتذار ضيف أو اشترِ أماكن إضافية");
     const ch = channelOf(reg);
+    if (!channelReady(ch)) throw new AppError("channel_off", "لا يمكن إرسال الفرصة: وسيلة تواصل هذا الشخص (واتساب) غير مفعّلة بعد");
     const price = s.prices.message[ch];
     const bal = (uS.data() as User).credit;
     if (bal < price) throw new AppError("low_credit", "رصيد الرسائل لا يكفي لإرسال الفرصة؛ اشحن الرصيد أولًا");

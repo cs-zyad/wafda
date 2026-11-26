@@ -1,4 +1,5 @@
 import { hmac, equalHex } from "../crypto";
+import { isDemo } from "../env";
 
 export interface PaymentEvent {
   id: string; // معرّف الإشعار الفريد من المزوّد
@@ -11,7 +12,7 @@ export interface PaymentEvent {
 /** واجهة مزوّد الدفع */
 export interface PaymentProvider {
   label: string;
-  mode: "mock" | "live";
+  mode: "mock" | "live" | "manual";
   checkoutUrl(paymentId: string): string;
   /** يتحقق من التوقيع ويعيد الإشعار، أو null */
   verify(rawBody: string, headers: Headers): PaymentEvent | null;
@@ -45,6 +46,17 @@ class MockPayments implements PaymentProvider {
   }
 }
 
-let provider: PaymentProvider = new MockPayments();
+/**
+ * تحويل بنكي يدوي (إلى أن تُربط بوابة دفع): الطلب يظهر للأدمن، يتواصل مع المنظّم على واتساب،
+ * وبعد استلام المبلغ يضغط «تأكيد الاستلام» فيمر بنفس مسار تثبيت الدفع (applyPayment). لا يقبل أي webhook.
+ */
+class ManualPayments implements PaymentProvider {
+  label = "تحويل بنكي (تأكيد يدوي من الأدمن)";
+  mode = "manual" as const;
+  checkoutUrl = (id: string) => `/dashboard/pay/${id}`;
+  verify = () => null;
+}
+
+let provider: PaymentProvider = isDemo() ? new MockPayments() : new ManualPayments();
 export const paymentProvider = () => provider;
 export const setPaymentProvider = (p: PaymentProvider) => void (provider = p);

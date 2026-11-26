@@ -74,4 +74,4 @@ export async function act<T = unknown>(fn: () => Promise<Res<T> | void>): Promis
   }
 }
 
-export const demo = () => process.env.DEMO_MODE === "true" || (process.env.NODE_ENV !== "production" && process.env.DEMO_MODE !== "false");
+export { isDemo as demo } from "./env";

@@ -1,6 +1,7 @@
 import { db, ref, tx, getDoc, where } from "../db";
 import { token } from "../crypto";
 import { AppError, notFound } from "../errors";
+import { normalizePhone } from "@/shared/text";
 import type { EventDoc, User } from "../types";
 import { paymentProvider, type PaymentEvent } from "../providers/payments";
 import { audit, getSettings, quote } from "./settings";
@@ -22,6 +23,8 @@ export interface Payment {
   createdAt: number;
   paidAt: number | null;
   lastWebhook: string | null;
+  /** رقم واتساب للتواصل بخصوص التحويل البنكي (الدفع اليدوي) */
+  contactPhone?: string | null;
 }
 export interface WebhookLog {
   id: string;
@@ -46,7 +49,8 @@ export async function packageSummary(ownerId: string, eventId: string) {
 }
 
 async function create(p: Pick<Payment, "ownerId" | "purpose" | "eventId" | "designId" | "places" | "amount" | "description">) {
-  const pay: Payment = { ...p, id: `pay_${token(12)}`, currency: "SAR", status: "pending", createdAt: Date.now(), paidAt: null, lastWebhook: null };
+  const owner = await getDoc<User>("users", p.ownerId);
+  const pay: Payment = { ...p, id: `pay_${token(12)}`, currency: "SAR", status: "pending", createdAt: Date.now(), paidAt: null, lastWebhook: null, contactPhone: owner?.phone ?? null };
   await ref("payments", pay.id).set(pay);
   return { payment: pay, url: paymentProvider().checkoutUrl(pay.id) };
 }
@@ -141,4 +145,34 @@ export async function ownPayment(ownerId: string, id: string) {
   const p = await getPayment(id);
   if (!p || p.ownerId !== ownerId) throw notFound("عملية الدفع");
   return p;
+}
+
+/* ===== الدفع اليدوي (تحويل بنكي) — إلى أن تُربط بوابة دفع ===== */
+
+/** الأدمن يؤكد استلام المبلغ: يمر بنفس مسار التثبيت، ومعرّف ثابت لكل عملية فلا يتكرر الأثر مهما ضُغط الزر */
+export async function confirmManualPayment(adminId: string, paymentId: string) {
+  const p = await getPayment(paymentId);
+  if (!p) throw notFound("عملية الدفع");
+  if (p.status === "paid") return "already_paid" as const;
+  const outcome = await applyPayment({ id: `admin_confirm_${p.id}`, type: "payment.succeeded", paymentId: p.id, amount: p.amount, currency: p.currency });
+  await audit(adminId, "payment.manual_confirm", `payments/${p.id}`, { amount: p.amount, outcome });
+  return outcome;
+}
+
+/** الأدمن يلغي طلبًا لم يُدفع (يبقى ممكنًا تأكيده لاحقًا إن وصل المبلغ) */
+export async function rejectManualPayment(adminId: string, paymentId: string) {
+  const p = await getPayment(paymentId);
+  if (!p) throw notFound("عملية الدفع");
+  if (p.status !== "pending") throw new AppError("not_pending", "الطلب ليس بانتظار الدفع");
+  await ref("payments", p.id).update({ status: "failed" });
+  await audit(adminId, "payment.manual_reject", `payments/${p.id}`, { amount: p.amount });
+}
+
+/** المنظّم يحدّث رقم واتساب للتواصل بخصوص الدفع (يُحفظ في حسابه أيضًا) */
+export async function setPaymentContact(ownerId: string, paymentId: string, phone: string) {
+  const p = await ownPayment(ownerId, paymentId);
+  const n = normalizePhone(phone);
+  if (!n) throw new AppError("validation", "رقم الجوال غير صالح");
+  await ref("payments", p.id).update({ contactPhone: n });
+  await ref("users", ownerId).update({ phone: n });
 }
